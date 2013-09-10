@@ -27,6 +27,7 @@ my $Verbose = 0;       # Verbose output from this script.
 my $Prog = "scan-build";
 my $BuildName;
 my $BuildDate;
+my $Top;
 
 my $TERM = $ENV{'TERM'};
 my $UseColor = (defined $TERM and $TERM =~ 'xterm-.*color' and -t STDOUT
@@ -845,7 +846,7 @@ ENDTEXT
   my $Num = scalar(@Index);
   Diag("$Num bugs found.\n");
   if ($Num > 0 && -r "$Dir/index.html") {
-    Diag("Run 'scan-view $Dir' to examine bug reports.\n");
+      Diag("Run '$Top/prebuilts/clang/linux-x86/host/3.3/tools/scan-view/scan-view $Dir' to examine bug reports.\n");
   }
   
   DiagCrashes($Dir) if (scalar @failures || scalar @attributes_ignored);
@@ -1524,6 +1525,21 @@ while (@ARGV) {
   if ($arg eq "--override-compiler") {
     shift @ARGV;
     $OverrideCompiler = 1;
+    next;
+  }
+
+  if ($arg =~ /^--top(=(.+))?$/) {
+    shift @ARGV;
+
+    if (!defined $2 || $2 eq "") {
+      if (!@ARGV) {
+        DieDiag("'--top' option requires a directory.\n");
+      }
+      $Top = shift @ARGV;
+    }
+    else {
+      $Top = $2;
+    }
     next;
   }
   
