@@ -1,34 +1,32 @@
 #!/bin/sh
 
-# This script is invoked by Android build system "WITH_SYNTAX_CHECK=1 make ..." and
+# This script is invoked by Android build system "WITH_SYNTAX_CHECK=1 m/mm/mmm ..." and
 # accepts command line in the following format:
 #
-#    cxx-syntax ARCH LOCAL_CXX ...
+#    ccc-analyzer ARCH LOCAL_CXX ...
 #
-# It calls "clang++ -fsyntax-only ..." to utilize clang's better diagnostics
-# before calling "LOCAL_CXX ..." for code generation.  ARCH is translated
-# into "-target XXX" (see below) to get proper pre-defined preprocessor
-# symbols/macros.  Some clang-specific warnings are disabled to be compatible
-# with Android toolchain mostly gcc.
+# Under WITH_SYNTAX_CHECK=1, m/mm/mmm/mma/mmma wrap "make" with "tools/scan-build/scan-build"
+# which utillizes "clang++ --analyze" for static code analyses.  Script scan-build interposes
+# on compiler with CC/CXX ignored by the Android build system unfortunately.  Instead,
+# Android build system recognizes WITH_SYNTAX_CHECK and replace LOCAL_CXX with our own cxx-syntax,
+# which in turn setup the following env. vars expected by tools/scan-build/c++-analyzer
 #
-# The compilation time is slightly longer, and the generated object file
-# should be the same as w/o WITH_SYNTAX_CHECK
+#   CCC_CXX: The origianl LOCAL_CXX which does the real compilation and code-gen
+#   CLANG_CXX: The clang++ compiler which run code analyses
 #
-# Note that although Android build system doesn't call LOCAL_CXX with any of
-# the following flags, this script should check and skip "clang -fsyntax-only"
-# if options contain any of the following: '-print-*', '-dump*', '@*', '-E',
-# '-' or '-M', for use elsewhere.
+# Our own cxx-syntax also export the following, and tools/scan-build/ccc-analyzer is slightly
+# modified to prefix/append them in options passed to clang++ for successful compilation
+#
+#   CLANG_FLAGS: Flags to set correct target, be compatible with gcc, etc
+#   CLANG_FLAGS_END:  Flags to override "$@"
 #
 
 ARCH="$1"
 LOCAL_CXX="$2"
 shift ; shift
 
-# Turn on syntax-only
-CLANG_FLAGS="-fsyntax-only"
-
 # Turn off warning about unused options
-CLANG_FLAGS="$CLANG_FLAGS -Qunused-arguments"
+CLANG_FLAGS="-Qunused-arguments"
 
 # Turn off unknown warning options
 CLANG_FLAGS="$CLANG_FLAGS -Wno-unknown-warning-option"
@@ -85,35 +83,33 @@ else
     len_m32=${#suffix_m32}            # length of suffix after the last -m32
     len_m64=${#suffix_m64}            # length of suffix after the last -m64
     if [ $len_m32 -ge $len_m64 ] ; then
-        read -d '' CLANG_FLAGS_END <<"EOF"
- -I prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.7-4.6/x86_64-linux/include/c++/4.6.x-google
- -I prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.7-4.6/x86_64-linux/include/c++/4.6.x-google/x86_64-linux
- -I prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.7-4.6/x86_64-linux/include/c++/4.6.x-google/backward
- -I prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.7-4.6/lib/gcc/x86_64-linux/4.6.x-google/include
- -I prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.7-4.6/lib/gcc/x86_64-linux/4.6.x-google/include-fixed
- -I prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.7-4.6/x86_64-linux/include
- -I prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.7-4.6/sysroot/usr/include
-EOF
+        CLANG_FLAGS_END="\
+-I prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.7-4.6/x86_64-linux/include/c++/4.6.x-google \
+-I prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.7-4.6/x86_64-linux/include/c++/4.6.x-google/x86_64-linux \
+-I prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.7-4.6/x86_64-linux/include/c++/4.6.x-google/backward \
+-I prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.7-4.6/lib/gcc/x86_64-linux/4.6.x-google/include \
+-I prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.7-4.6/lib/gcc/x86_64-linux/4.6.x-google/include-fixed \
+-I prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.7-4.6/x86_64-linux/include \
+-I prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.7-4.6/sysroot/usr/include"
     else
-        read -d '' CLANG_FLAGS_END <<"EOF"
- -I prebuilts/gcc/linux-x86/host/i686-linux-glibc2.7-4.6/i686-linux/include/c++/4.6.x-google
- -I prebuilts/gcc/linux-x86/host/i686-linux-glibc2.7-4.6/i686-linux/include/c++/4.6.x-google/i686-linux
- -I prebuilts/gcc/linux-x86/host/i686-linux-glibc2.7-4.6/i686-linux/include/c++/4.6.x-google/backward
- -I prebuilts/gcc/linux-x86/host/i686-linux-glibc2.7-4.6/lib/gcc/i686-linux/4.6.x-google/include
- -I prebuilts/gcc/linux-x86/host/i686-linux-glibc2.7-4.6/lib/gcc/i686-linux/4.6.x-google/include-fixed
- -I prebuilts/gcc/linux-x86/host/i686-linux-glibc2.7-4.6/i686-linux/include
- -I prebuilts/gcc/linux-x86/host/i686-linux-glibc2.7-4.6/sysroot/usr/include
-EOF
+        CLANG_FLAGS_END="\
+-I prebuilts/gcc/linux-x86/host/i686-linux-glibc2.7-4.6/i686-linux/include/c++/4.6.x-google \
+-I prebuilts/gcc/linux-x86/host/i686-linux-glibc2.7-4.6/i686-linux/include/c++/4.6.x-google/i686-linux \
+-I prebuilts/gcc/linux-x86/host/i686-linux-glibc2.7-4.6/i686-linux/include/c++/4.6.x-google/backward \
+-I prebuilts/gcc/linux-x86/host/i686-linux-glibc2.7-4.6/lib/gcc/i686-linux/4.6.x-google/include \
+-I prebuilts/gcc/linux-x86/host/i686-linux-glibc2.7-4.6/lib/gcc/i686-linux/4.6.x-google/include-fixed \
+-I prebuilts/gcc/linux-x86/host/i686-linux-glibc2.7-4.6/i686-linux/include \
+-I prebuilts/gcc/linux-x86/host/i686-linux-glibc2.7-4.6/sysroot/usr/include"
     fi
 fi
 
 # Turn off warnings (at the end) on features we exploit
 CLANG_FLAGS_END="$CLANG_FLAGS_END -Wno-return-type-c-linkage"
 
-# Call it
-`dirname $0`/clang++ $CLANG_FLAGS "$@" $CLANG_FLAGS_END
-if [ "$?" != 0 ]; then
-    test $WITH_SYNTAX_CHECK -ge 2 && echo '*** ERROR ***': `dirname $0`/clang++ $CLANG_FLAGS "$@" $CLANG_FLAGS_END
-    exit 1
-fi
-$LOCAL_CXX "$@"
+# Call the real c++-analyzer.  Note that tools/scan-build/c++-analyzer "exec" $CCC_CXX,
+# which is LOCAL_CXX w/o optional ccache (in "ccache g++" format)
+export CCC_CXX="${LOCAL_CXX##* }"
+export CLANG_CXX="`dirname $0`/clang++"
+export CLANG_FLAGS
+export CLANG_FLAGS_END
+`dirname $0`/../tools/scan-build/c++-analyzer "$@"

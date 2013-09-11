@@ -27,6 +27,8 @@ use Text::ParseWords;
 
 my $Compiler;
 my $Clang;
+my @ClangFlags;
+my @ClangFlagsEnd;
 my $DefaultCCompiler;
 my $DefaultCXXCompiler;
 
@@ -52,6 +54,9 @@ else {
   $Clang = $ENV{'CLANG'};
   if (!defined $Clang) { $Clang = 'clang'; }
 }
+
+@ClangFlags = quotewords('\s+', 0, $ENV{'CLANG_FLAGS'});
+@ClangFlagsEnd = quotewords('\s+', 0, $ENV{'CLANG_FLAGS_END'});
 
 ##===----------------------------------------------------------------------===##
 # Cleanup.
@@ -111,14 +116,14 @@ sub ProcessClangFailure {
   my ($PPH, $PPFile) = tempfile( $prefix . "_XXXXXX",
                                  SUFFIX => GetPPExt($Lang),
                                  DIR => $Dir);
-  system $Clang, @$Args, "-E", "-o", $PPFile;
+  system $Clang, @ClangFlags, @$Args, @ClangFlagsEnd, "-E", "-o", $PPFile;
   close ($PPH);
   
   # Create the info file.
   open (OUT, ">", "$PPFile.info.txt") or die "Cannot open $PPFile.info.txt\n";
   print OUT abs_path($file), "\n";
   print OUT "$ErrorType\n";
-  print OUT "@$Args\n";
+  print OUT "@ClangFlags @$Args @ClangFlagsEnd\n";
   close OUT;
   `uname -a >> $PPFile.info.txt 2>&1`;
   `$Compiler -v >> $PPFile.info.txt 2>&1`;
@@ -140,7 +145,7 @@ sub GetCCArgs {
     close FROM_CHILD;
     open(STDOUT,">&", \*TO_PARENT);
     open(STDERR,">&", \*TO_PARENT);
-    exec $Clang, "-###", $mode, @$Args;
+    exec $Clang, "-###", $mode, @ClangFlags, @$Args, @ClangFlagsEnd;
   }  
   close(TO_PARENT);
   my $line;
