@@ -106,7 +106,7 @@ CLANG_FLAGS_END="$CLANG_FLAGS_END -Wno-return-type-c-linkage"
 # Call the real ccc-analyzer.  Note that tools/scan-build/ccc-analyzer "exec" $CCC_CC,
 # which is LOCAL_CC w/o optional ccache (in "ccache gcc" format)
 export CCC_CC="${LOCAL_CC##* }"
-export CLANG="`dirname $0`/clang"
+export CLANG="`dirname $0`/analyzer"
 export CLANG_FLAGS
 export CLANG_FLAGS_END
 `dirname $0`/../tools/scan-build/ccc-analyzer "$@"
