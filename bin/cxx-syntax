@@ -111,9 +111,9 @@ fi
 CLANG_FLAGS_END="$CLANG_FLAGS_END -Wno-return-type-c-linkage"
 
 # Call it
-`dirname $0`/clang++ $CLANG_FLAGS "$@" $CLANG_FLAGS_END
+`dirname $0`/analyzer++ $CLANG_FLAGS "$@" $CLANG_FLAGS_END
 if [ "$?" != 0 ]; then
-    test $WITH_SYNTAX_CHECK -ge 2 && echo '*** ERROR ***': `dirname $0`/clang++ $CLANG_FLAGS "$@" $CLANG_FLAGS_END
+    test $WITH_SYNTAX_CHECK -ge 2 && echo '*** ERROR ***': `dirname $0`/analyzer++ $CLANG_FLAGS "$@" $CLANG_FLAGS_END
     exit 1
 fi
 $LOCAL_CXX "$@"

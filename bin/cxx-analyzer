@@ -109,7 +109,7 @@ CLANG_FLAGS_END="$CLANG_FLAGS_END -Wno-return-type-c-linkage"
 # Call the real c++-analyzer.  Note that tools/scan-build/c++-analyzer "exec" $CCC_CXX,
 # which is LOCAL_CXX w/o optional ccache (in "ccache g++" format)
 export CCC_CXX="${LOCAL_CXX##* }"
-export CLANG_CXX="`dirname $0`/clang++"
+export CLANG_CXX="`dirname $0`/analyzer++"
 export CLANG_FLAGS
 export CLANG_FLAGS_END
 `dirname $0`/../tools/scan-build/c++-analyzer "$@"
